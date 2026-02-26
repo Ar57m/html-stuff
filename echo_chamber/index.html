@@ -7,9 +7,9 @@
 <style>
   :root {
     --bg: #f0f2f5; --panel: #ffffff; --text: #1c1e21; --muted: #65676b;
-    --me-bg: #dcf8c6; --me-text: #000000;
-    --other-bg: #ffffff; --other-text: #000000;
-    --accent: #0084ff; --header-h: 60px;
+    --me-bg: #005ebd; --me-text: #000000;
+    --other-bg: #ff5ebd; --other-text: #000000;
+    --accent: #80af00; --header-h: 60px;
   }
   [data-theme="dark"] {
     --bg: #0b141a; --panel: #111b21; --text: #e9edef; --muted: #8696a0;
@@ -303,7 +303,7 @@
   let state = {
     settings: { 
       myName: 'You', 
-      myColor: '#dcf8c6', 
+      myColor: '#005ebd', 
       theme: 'light', 
       enterToSend: true,
       multiVoice: false,
@@ -360,11 +360,11 @@
     if (!state.settings.voices) {
       state.settings.voices = [];
       if (state.settings.otherName) {
-        state.settings.voices.push({ id: uid(), name: state.settings.otherName || 'Companion', color: state.settings.otherColor || '#ffffff', details: '' });
+        state.settings.voices.push({ id: uid(), name: state.settings.otherName || 'Companion', color: state.settings.otherColor || '#ff5ebd', details: '' });
       }
     }
     if (state.settings.voices.length === 0) {
-      state.settings.voices.push({ id: uid(), name: 'Companion', color: '#ffffff', details: '' });
+      state.settings.voices.push({ id: uid(), name: 'Companion', color: '#ff5ebd', details: '' });
     }
 
     applySettings();
@@ -577,40 +577,38 @@
     const tag = active ? active.tagName : null;
     const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
-    if (e.key === 'Backspace' && !isTyping) {
+    // VOICE SWITCHING (Alt + 1-0)
+    if (e.altKey && e.key >= '0' && e.key <= '9') {
       e.preventDefault();
-
-      if (!$('voiceEditModal')?.classList.contains('hidden')) {
-        $('cancelVoiceEdit')?.click();
-        return;
-      }
-
-      if (!$('voiceManagerModal')?.classList.contains('hidden')) {
-        $('closeVoiceManager')?.click();
-        return;
-      }
-
-      if (!$('settingsModal')?.classList.contains('hidden')) {
-        $('closeSettings')?.click();
-        return;
-      }
-
-      if (!$('editModal')?.classList.contains('hidden')) {
-        $('editCancel')?.click();
-        return;
+      const num = parseInt(e.key);
+      
+      if (num === 1) {
+        // Alt + 1: Always "Me"
+        activeVoiceId = 'me';
+        renderSpeakerList();
+      } else {
+        // Alt + 2-9 maps to voices[0-7]
+        // Alt + 0 maps to voices[8] (the 10th voice total)
+        let voiceIdx = (num === 0) ? 8 : num - 2;
+        
+        if (state.settings.voices[voiceIdx]) {
+          activeVoiceId = state.settings.voices[voiceIdx].id;
+          renderSpeakerList();
+        }
       }
     }
 
-    if (e.key === 'Enter' && !isTyping) {
-      if (!$('voiceEditModal')?.classList.contains('hidden')) {
-        $('saveVoiceBtn')?.click();
-        return;
-      }
+    if (e.key === 'Backspace' && !isTyping) {
+      e.preventDefault();
+      if (!$('voiceEditModal')?.classList.contains('hidden')) { $('cancelVoiceEdit')?.click(); return; }
+      if (!$('voiceManagerModal')?.classList.contains('hidden')) { $('closeVoiceManager')?.click(); return; }
+      if (!$('settingsModal')?.classList.contains('hidden')) { $('closeSettings')?.click(); return; }
+      if (!$('editModal')?.classList.contains('hidden')) { $('editCancel')?.click(); return; }
+    }
 
-      if (!$('settingsModal')?.classList.contains('hidden')) {
-        $('saveSettings')?.click();
-        return;
-      }
+    if (e.key === 'Enter' && !isTyping) {
+      if (!$('voiceEditModal')?.classList.contains('hidden')) { $('saveVoiceBtn')?.click(); return; }
+      if (!$('settingsModal')?.classList.contains('hidden')) { $('saveSettings')?.click(); return; }
     }
   });
 
