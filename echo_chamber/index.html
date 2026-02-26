@@ -298,7 +298,8 @@
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const LS_KEY = 'echo_chamber_v2_final';
+  const LS_KEY = 'echo_chamber_v3';
+  const OLD_LS_KEY = 'echo_chamber_v2_final'; // Kept for backward compatibility
   
   let state = {
     settings: { 
@@ -348,7 +349,17 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 
   function load() {
-    const raw = localStorage.getItem(LS_KEY);
+    let raw = localStorage.getItem(LS_KEY);
+    let isMigration = false;
+
+    // DATA MIGRATION: Fallback to old key if new key doesn't exist yet
+    if (!raw) {
+      raw = localStorage.getItem(OLD_LS_KEY);
+      if (raw) {
+        isMigration = true;
+      }
+    }
+
     if (raw) {
       state = JSON.parse(raw);
     } else {
@@ -356,7 +367,7 @@
       state.settings.theme = prefersDark ? 'dark' : 'light';
     }
     
-    // MIGRATION
+    // STRUCTURAL MIGRATION (Your existing logic)
     if (!state.settings.voices) {
       state.settings.voices = [];
       if (state.settings.otherName) {
@@ -365,6 +376,13 @@
     }
     if (state.settings.voices.length === 0) {
       state.settings.voices.push({ id: uid(), name: 'Companion', color: '#ff5ebd', details: '' });
+    }
+
+    // Save immediately if we just moved data from the old key to the new key
+    if (isMigration) {
+      save(); 
+      // Aggressively clean up old localStorage data
+      localStorage.removeItem(OLD_LS_KEY); 
     }
 
     applySettings();
@@ -507,7 +525,9 @@
       const start = () => { div.classList.add('pressed'); pressTimer = setTimeout(() => { div.classList.remove('pressed'); openEdit(msg.id); }, 500); };
       const clear = () => { clearTimeout(pressTimer); div.classList.remove('pressed'); };
       div.onmousedown = start; div.onmouseup = div.onmouseleave = clear;
-      div.addEventListener('touchstart', start, {passive: true}); div.addEventListener('touchend', clear); div.addEventListener('touchmove', clear);
+      div.addEventListener('touchstart', start, {passive: true});
+      div.addEventListener('touchend', clear);
+      div.addEventListener('touchmove', clear, { passive: true });
       div.addEventListener('contextmenu', e => e.preventDefault());
       container.appendChild(div);
     });
@@ -520,11 +540,15 @@
     container.innerHTML = '';
     
     // PC Scrolling Support for container
-    container.onwheel = (e) => {
-      if(container.classList.contains('scroll-mode')) {
-        if(e.deltaY !== 0) { e.preventDefault(); container.scrollLeft += e.deltaY; }
+    container.addEventListener('wheel', (e) => {
+      if (
+        container.classList.contains('scroll-mode') &&
+        container.scrollWidth > container.clientWidth
+      ) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
       }
-    };
+    }, { passive: false });
 
     const createBtn = (id, name, color, isMe) => {
       const btn = document.createElement('button');
